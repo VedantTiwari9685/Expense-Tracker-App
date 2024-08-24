@@ -60,7 +60,7 @@ class _SplashScreenState extends State<SplashScreen>
                 'Expense Tracker',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 40), // Add space between the texts
+              const SizedBox(height: 160), // Add space between the texts
               const Text(
                 'Developed by Vedant Tiwari',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300),

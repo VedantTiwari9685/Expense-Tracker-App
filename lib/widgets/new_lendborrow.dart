@@ -1,9 +1,7 @@
-// import 'package:expense_tracker/models/expense.dart';
-
 import 'dart:io';
 
 import 'package:expense_tracker/models/expense.dart';
-import 'package:expense_tracker/providers/total_provider.dart';
+import 'package:expense_tracker/providers/lendborrow_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,20 +9,22 @@ import 'package:intl/intl.dart';
 
 final formatter = DateFormat('dd/MM/yyyy');
 
-class NewExpense extends ConsumerStatefulWidget {
-  const NewExpense({super.key, required this.onAddExpense});
+class NewLendBorrow extends ConsumerStatefulWidget {
+  const NewLendBorrow({super.key, required this.onAddLendBorrow});
 
-  final void Function(Expense expense) onAddExpense;
+  final void Function(LendBorrow lendborrow) onAddLendBorrow;
 
   @override
-  _NewExpenseState createState() => _NewExpenseState();
+  _NewLendBorrowState createState() => _NewLendBorrowState();
 }
 
-class _NewExpenseState extends ConsumerState<NewExpense> {
-  final _titleController = TextEditingController();
+class _NewLendBorrowState extends ConsumerState<NewLendBorrow> {
+  final _personController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+
   DateTime? _selectedDate;
-  Category _selectedCategory = Category.shopping;
+  LDCat _selectedCategory = LDCat.lend;
 
   void _presentDatePicker() async {
     final now = DateTime.now();
@@ -46,7 +46,7 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
           builder: (ctx) => CupertinoAlertDialog(
                 title: const Text("Invalid Input"),
                 content: const Text(
-                    "Please make sure a valid title, amount, date and category was entered."),
+                    "Please make sure a valid Person Name, Description, Amount, Date and Category was entered."),
                 actions: [
                   TextButton(
                       onPressed: () {
@@ -61,7 +61,7 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
         builder: (ctx) => AlertDialog(
           title: const Text("Invalid Input"),
           content: const Text(
-              "Please make sure a valid title, amount, date and category was entered."),
+              "Please make sure a valid Person Name, Description, Amount, Date and Category was entered."),
           actions: [
             TextButton(
                 onPressed: () {
@@ -74,32 +74,41 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
     }
   }
 
-  void _submitExpenseData() {
+  void _submitLendBorrowData() {
     final enteredAmount = double.tryParse(_amountController.text);
     final amoutIsInvalid = enteredAmount == null || enteredAmount <= 0;
-    if (_titleController.text.trim().isEmpty ||
+    if (_personController.text.trim().isEmpty ||
+        _descriptionController.text.trim().isEmpty ||
         amoutIsInvalid ||
         _selectedDate == null) {
       _showDialog();
+
       return;
     }
-    final totalExpense = ref.read(totalProviderNotifierProvider.notifier);
-    totalExpense.addSpent(enteredAmount.toInt());
-    widget.onAddExpense(
-      Expense(
-        title: _titleController.text,
+
+    widget.onAddLendBorrow(
+      LendBorrow(
+        person: _personController.text,
+        description: _descriptionController.text,
         amount: enteredAmount,
         date: _selectedDate!,
-        category: _selectedCategory,
+        ldCat: _selectedCategory,
       ),
     );
+    final totalLendBorrowNotifier = ref.read(totalLendBorrowProvider.notifier);
 
+    if (_selectedCategory == LDCat.lend) {
+      totalLendBorrowNotifier.addLend(enteredAmount.toInt());
+    } else {
+      totalLendBorrowNotifier.addBorrow(enteredAmount.toInt());
+    }
     Navigator.pop(context);
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
+    _personController.dispose();
+    _descriptionController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -125,16 +134,40 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: _titleController,
+                            controller: _personController,
                             maxLength: 50,
                             decoration: const InputDecoration(
-                              label: Text("Title"),
+                              label: Text("Person Name"),
                             ),
                           ),
                         ),
                         const SizedBox(
                           width: 24,
                         ),
+                        Expanded(
+                          child: TextField(
+                            controller: _descriptionController,
+                            maxLength: 50,
+                            decoration: const InputDecoration(
+                              label: Text("Description"),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    TextField(
+                      controller: _personController,
+                      maxLength: 50,
+                      decoration: const InputDecoration(
+                        label: Text("Person Name"),
+                      ),
+                    ),
+                  if (width >= 600)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
                         Expanded(
                           child: TextField(
                             controller: _amountController,
@@ -145,22 +178,12 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
                             ),
                           ),
                         ),
-                      ],
-                    )
-                  else
-                    TextField(
-                      controller: _titleController,
-                      maxLength: 50,
-                      decoration: const InputDecoration(
-                        label: Text("Title"),
-                      ),
-                    ),
-                  if (width >= 600)
-                    Row(
-                      children: [
+                        const SizedBox(
+                          width: 44,
+                        ),
                         DropdownButton(
                           value: _selectedCategory,
-                          items: Category.values
+                          items: LDCat.values
                               .map(
                                 (category) => DropdownMenuItem(
                                   value: category,
@@ -218,15 +241,14 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(_selectedDate == null
-                                  ? "No Date Selected"
-                                  : formatter.format(_selectedDate!)),
-                              IconButton(
-                                onPressed: _presentDatePicker,
-                                icon: const Icon(
-                                  Icons.calendar_month,
+                              Expanded(
+                                child: TextField(
+                                  controller: _descriptionController,
+                                  decoration: const InputDecoration(
+                                    label: Text("Description"),
+                                  ),
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ),
@@ -236,27 +258,13 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
                     height: 16,
                   ),
                   if (width >= 600)
-                    Row(
-                      children: [
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          onPressed: _submitExpenseData,
-                          child: const Text("Save Expense"),
-                        )
-                      ],
-                    )
+                    SizedBox()
                   else
                     Row(
                       children: [
                         DropdownButton(
                           value: _selectedCategory,
-                          items: Category.values
+                          items: LDCat.values
                               .map(
                                 (category) => DropdownMenuItem(
                                   value: category,
@@ -274,18 +282,35 @@ class _NewExpenseState extends ConsumerState<NewExpense> {
                           },
                         ),
                         const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          onPressed: _submitExpenseData,
-                          child: const Text("Save Expense"),
+                        Text(_selectedDate == null
+                            ? "No Date Selected"
+                            : formatter.format(_selectedDate!)),
+                        IconButton(
+                          onPressed: _presentDatePicker,
+                          icon: const Icon(
+                            Icons.calendar_month,
+                          ),
                         )
                       ],
-                    )
+                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 40,
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Cancel"),
+                      ),
+                      ElevatedButton(
+                        onPressed: _submitLendBorrowData,
+                        child: const Text("Save Transaction"),
+                      )
+                    ],
+                  )
                 ],
               ),
             ),
